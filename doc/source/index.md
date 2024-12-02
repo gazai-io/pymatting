@@ -34,7 +34,6 @@ A warning will be thrown if PyOpenCL or CuPy are not available.
 
 * numpy>=1.16.0
 * pillow>=5.2.0
-* numba>=0.44.0
 * scipy>=1.1.0
 
 ## Additional Requirements (for GPU support)

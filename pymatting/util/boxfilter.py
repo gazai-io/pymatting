@@ -1,15 +1,13 @@
 from pymatting.util.util import apply_to_channels
 import numpy as np
-from numba import njit, prange
 
 
-@njit("f8[:, :](f8[:, :], i8)", cache=True, parallel=True)
 def boxfilter_rows_valid(src, r):
     m, n = src.shape
 
     dst = np.zeros((m, n - 2 * r))
 
-    for i in prange(m):
+    for i in range(m):
         for j_dst in range(1):
             s = 0.0
             for j_src in range(j_dst, j_dst + 2 * r + 1):
@@ -28,13 +26,12 @@ def boxfilter_rows_valid(src, r):
     return dst
 
 
-@njit("f8[:, :](f8[:, :], i8)", cache=True, parallel=True)
 def boxfilter_rows_same(src, r):
     m, n = src.shape
 
     dst = np.zeros((m, n))
 
-    for i in prange(m):
+    for i in range(m):
         for j_dst in range(1):
             s = 0.0
             for j_src in range(j_dst + r + 1):
@@ -57,13 +54,12 @@ def boxfilter_rows_same(src, r):
     return dst
 
 
-@njit("f8[:, :](f8[:, :], i8)", cache=True, parallel=True)
 def boxfilter_rows_full(src, r):
     m, n = src.shape
 
     dst = np.zeros((m, n + 2 * r))
 
-    for i in prange(m):
+    for i in range(m):
         for j_dst in range(1):
             s = 0.0
             for j_src in range(j_dst + r + 1 - r):

@@ -1,9 +1,8 @@
 import numpy as np
 import scipy.sparse
 from pymatting.util.util import weights_to_laplacian
-from numba import njit
 
-@njit("Tuple((f8[:], i4[:], i4[:]))(f8[:,:,:], f8, i4)", cache=True, nogil=True)
+
 def _rw_laplacian(image, sigma, r):
     h, w = image.shape[:2]
     n = h * w

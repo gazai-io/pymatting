@@ -1,8 +1,6 @@
 import numpy as np
-from numba import njit, prange
 
 
-@njit("(f8[:],)", cache=True, nogil=True)
 def _propagate_1d_first_pass(d):
     n = len(d)
     for i1 in range(1, n):
@@ -14,7 +12,6 @@ def _propagate_1d_first_pass(d):
         d[i1] = min(d[i1], d[i2] + 1)
 
 
-@njit("(f8[:], i4[:], f8[:], f8[:])", cache=True, nogil=True)
 def _propagate_1d(d, v, z, f):
     nx = len(d)
     k = -1
@@ -58,18 +55,17 @@ def _propagate_1d(d, v, z, f):
         d[x] = np.sqrt(dx * dx + f[vk])
 
 
-@njit("(f8[:, :],)", cache=True, parallel=True, nogil=True)
 def _propagate_distance(distance):
     ny, nx = distance.shape
 
-    for x in prange(nx):
+    for x in range(nx):
         _propagate_1d_first_pass(distance[:, x])
 
     v = np.zeros((ny, nx), dtype=np.int32)
     z = np.zeros((ny, nx + 1))
     f = np.zeros((ny, nx))
 
-    for y in prange(ny):
+    for y in range(ny):
         _propagate_1d(distance[y], v[y], z[y], f[y])
 
 

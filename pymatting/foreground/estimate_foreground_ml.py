@@ -1,8 +1,6 @@
 import numpy as np
-from numba import njit, prange
 
 
-@njit("void(f4[:, :, :], f4[:, :, :])", cache=True, nogil=True, parallel=True)
 def _resize_nearest_multichannel(dst, src):
     """
     Internal method.
@@ -20,7 +18,7 @@ def _resize_nearest_multichannel(dst, src):
     h_src, w_src, depth = src.shape
     h_dst, w_dst, depth = dst.shape
 
-    for y_dst in prange(h_dst):
+    for y_dst in range(h_dst):
         for x_dst in range(w_dst):
             x_src = max(0, min(w_src - 1, x_dst * w_src // w_dst))
             y_src = max(0, min(h_src - 1, y_dst * h_src // h_dst))
@@ -29,7 +27,6 @@ def _resize_nearest_multichannel(dst, src):
                 dst[y_dst, x_dst, c] = src[y_src, x_src, c]
 
 
-@njit("void(f4[:, :], f4[:, :])", cache=True, nogil=True, parallel=True)
 def _resize_nearest(dst, src):
     """
     Internal method.
@@ -47,18 +44,14 @@ def _resize_nearest(dst, src):
     h_src, w_src = src.shape
     h_dst, w_dst = dst.shape
 
-    for y_dst in prange(h_dst):
+    for y_dst in range(h_dst):
         for x_dst in range(w_dst):
             x_src = max(0, min(w_src - 1, x_dst * w_src // w_dst))
             y_src = max(0, min(h_src - 1, y_dst * h_src // h_dst))
 
             dst[y_dst, x_dst] = src[y_src, x_src]
 
-# TODO
-# There should be an option to switch @njit(parallel=True) on or off.
-# parallel=True would be faster, but might cause race conditions.
-# User should have the option to turn it on or off.
-@njit("Tuple((f4[:, :, :], f4[:, :, :]))(f4[:, :, :], f4[:, :], f4, i4, i4, i4, f4)", cache=True, nogil=True)
+
 def _estimate_fb_ml(
     input_image,
     input_alpha,
@@ -127,7 +120,7 @@ def _estimate_fb_ml(
         dy = [0, 0, -1, 1]
 
         for i_iter in range(n_iter):
-            for y in prange(h):
+            for y in range(h):
                 for x in range(w):
                     a0 = alpha[y, x]
                     a1 = 1.0 - a0

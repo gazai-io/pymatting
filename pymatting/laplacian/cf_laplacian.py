@@ -1,8 +1,7 @@
 import numpy as np
 import scipy.sparse
-from numba import njit
 
-@njit("void(f8[:, :, :], f8, i8, f8[:, :, :], i8[:], i8[:], b1[:, :])", cache=True, nogil=True)
+
 def _cf_laplacian(image, epsilon, r, values, indices, indptr, is_known):
     h, w, d = image.shape
     assert d == 3
@@ -31,7 +30,7 @@ def _cf_laplacian(image, epsilon, r, values, indices, indptr, is_known):
     for y in range(r, h - r):
         for x in range(r, w - r):
 
-            if np.all(is_known[y - r : y + r + 1, x - r : x + r + 1]):
+            if np.all(is_known[y - r: y + r + 1, x - r: x + r + 1]):
                 continue
 
             # For each color channel

@@ -1,13 +1,7 @@
 import numpy as np
 import scipy.sparse
-from numba import njit
 
 
-@njit(
-    "i8(i8, f8[:], i8[:], i8[:], f8[:], i8[:], i8[:], f8, f8, i8, f8, b1)",
-    cache=True,
-    nogil=True,
-)
 def _ichol(
     n,
     Av,
@@ -31,10 +25,13 @@ def _ichol(
     c_n = 0
     s = np.zeros(n, np.int64)  # Next non-zero row index i in column j of L
     t = np.zeros(n, np.int64)  # First subdiagonal index i in column j of A
-    l = np.zeros(n, np.int64) - 1  # Linked list of non-zero columns in row k of L
+    # Linked list of non-zero columns in row k of L
+    l = np.zeros(n, np.int64) - 1
     a = np.zeros(n, np.float64)  # Values of column j
-    r = np.zeros(n, np.float64)  # r[j] = sum(abs(A[j:, j])) for relative threshold
-    b = np.zeros(n, np.bool_)  # b[i] indicates if the i-th element of column j is non-zero
+    # r[j] = sum(abs(A[j:, j])) for relative threshold
+    r = np.zeros(n, np.float64)
+    # b[i] indicates if the i-th element of column j is non-zero
+    b = np.zeros(n, np.bool_)
     c = np.empty(n, np.int64)  # Row indices of non-zero elements in column j
     d = np.full(n, shift, np.float64)  # Diagonal elements of A
     for j in range(n):
@@ -107,13 +104,13 @@ def _ichol(
         c_n = 0  # Discard row indices of non-zero elements in column j.
         Lp[j + 1] = nnz  # Update count of non-zero elements up to column j
         if Lp[j] + 1 < Lp[j + 1]:  # If column j has a non-zero element below diagonal
-            i = Lr[Lp[j] + 1]  # Row index of first off-diagonal non-zero element
+            # Row index of first off-diagonal non-zero element
+            i = Lr[Lp[j] + 1]
             l[j] = l[i]  # Remember old list i index in list j
             l[i] = j  # Insert index of non-zero element into list i
     return nnz
 
 
-@njit("void(f8[:], i8[:], i8[:], f8[:], i8)", cache=True, nogil=True)
 def _backsub_L_csc_inplace(data, indices, indptr, x, n):
     for j in range(n):
         k = indptr[j]
@@ -129,7 +126,6 @@ def _backsub_L_csc_inplace(data, indices, indptr, x, n):
             x[i] -= L_ij * temp
 
 
-@njit("void(f8[:], i8[:], i8[:], f8[:], i8)", cache=True, nogil=True)
 def _backsub_LT_csc_inplace(data, indices, indptr, x, n):
     for i in range(n - 1, -1, -1):
         s = x[i]
@@ -250,8 +246,10 @@ def ichol(
 
     assert m == n
 
-    Lv = np.empty(max_nnz, dtype=np.float64)  # Values of non-zero elements of L
-    Lr = np.empty(max_nnz, dtype=np.int64)  # Row indices of non-zero elements of L
+    # Values of non-zero elements of L
+    Lv = np.empty(max_nnz, dtype=np.float64)
+    # Row indices of non-zero elements of L
+    Lr = np.empty(max_nnz, dtype=np.int64)
     Lp = np.zeros(
         n + 1, dtype=np.int64
     )  # Start(Lp[i]) and end(Lp[i+1]) index of L[:, i] in Lv

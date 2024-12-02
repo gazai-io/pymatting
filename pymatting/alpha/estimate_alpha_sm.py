@@ -1,5 +1,5 @@
-from numba import njit, pndindex
 import numpy as np
+
 
 def estimate_alpha_sm(
     image,
@@ -77,16 +77,22 @@ def estimate_alpha_sm(
     ...     return_foreground_background=True,
     ...     sample_gathering_angles=4)
     """
-    assert image.dtype in [np.float32, np.float64], f"image.dtype should be float32 or float64, but is {image.dtype}"
-    assert trimap.dtype in [np.float32, np.float64], f"trimap.dtype should be float32 or float64, but is {trimap.dtype}"
-    assert trimap.shape == image.shape[:2], f"image height and width should match trimap height and width, but image shape is {image.shape} and trimap shape is {trimap.shape}"
-    assert len(image.shape) == 3 and image.shape[2] == 3, f"image should be RGB, but shape is {image.shape}"
+    assert image.dtype in [
+        np.float32, np.float64], f"image.dtype should be float32 or float64, but is {image.dtype}"
+    assert trimap.dtype in [
+        np.float32, np.float64], f"trimap.dtype should be float32 or float64, but is {trimap.dtype}"
+    assert trimap.shape == image.shape[:2], f"image height and width should match trimap height and width, but image shape is {
+        image.shape} and trimap shape is {trimap.shape}"
+    assert len(image.shape) == 3 and image.shape[2] == 3, f"image should be RGB, but shape is {
+        image.shape}"
 
     if local_smoothing_sigma_sq1 is None:
-        local_smoothing_sigma_sq1 = (2 * local_smoothing_radius1 + 1)**2 / (9.0 * np.pi)
+        local_smoothing_sigma_sq1 = (
+            2 * local_smoothing_radius1 + 1)**2 / (9.0 * np.pi)
 
     if local_smoothing_sigma_sq3 is None:
-        local_smoothing_sigma_sq3 = (2 * local_smoothing_radius1 + 1)**2 / (9.0 * np.pi)
+        local_smoothing_sigma_sq3 = (
+            2 * local_smoothing_radius1 + 1)**2 / (9.0 * np.pi)
 
     # Convert to float32 if float64. Precision should be sufficient.
     image = image.astype(np.float32)
@@ -164,7 +170,7 @@ def estimate_alpha_sm(
     else:
         return final_alpha
 
-@njit("f4(f4[::1], f4[::1], f4[::1])", cache=True, nogil=True)
+
 def estimate_alpha(I, F, B):
     fb0 = F[0] - B[0]
     fb1 = F[1] - B[1]
@@ -182,14 +188,14 @@ def estimate_alpha(I, F, B):
 
     return alpha
 
-@njit("f4(f4[::1], f4[::1])", cache=True, nogil=True)
+
 def inner(a, b):
     s = 0.0
     for i in range(len(a)):
         s += a[i] * b[i]
     return s
 
-@njit("f4(f4[::1], f4[::1], f4[::1])", cache=True, nogil=True)
+
 def Mp2(I, F, B):
     a = estimate_alpha(I, F, B)
 
@@ -199,7 +205,7 @@ def Mp2(I, F, B):
 
     return d0 * d0 + d1 * d1 + d2 * d2
 
-@njit("f4(f4[:, :, ::1], i8, i8, f4[::1], f4[::1], i8)", cache=True, nogil=True)
+
 def Np(image, x, y, F, B, r):
     h, w = image.shape[:2]
     result = 0.0
@@ -210,7 +216,7 @@ def Np(image, x, y, F, B, r):
             result += Mp2(image[y2, x2], F, B)
     return result
 
-@njit("f4(f4[:, :, ::1], i8, i8, i8, i8)", cache=True, nogil=True)
+
 def Ep(image, px, py, sx, sy):
     result = 0.0
 
@@ -219,7 +225,8 @@ def Ep(image, px, py, sx, sy):
 
     d = np.hypot(spx, spy)
 
-    if d == 0.0: return 0.0
+    if d == 0.0:
+        return 0.0
 
     num_steps = int(np.ceil(d))
     num_steps = max(1, min(10, num_steps))
@@ -256,49 +263,55 @@ def Ep(image, px, py, sx, sy):
 
     return result
 
-@njit("f4(f4[::1], f4[::1])", cache=True, nogil=True)
+
 def dist(a, b):
     d2 = 0.0
     for i in range(a.shape[0]):
         d2 += (a[i] - b[i]) ** 2
     return np.sqrt(d2)
 
-@njit("f4(f4[::1])", cache=True, nogil=True)
+
 def length(a):
     return np.sqrt(inner(a, a))
 
-@njit("void(f4[:, ::1], f4[:, ::1], f4[:, :, ::1], i8, f4)", cache=True, parallel=True, nogil=True)
+
 def expand_trimap(expanded_trimap, trimap, image, k_i, k_c):
     # NB: Description in paper does not match published test images.
     # The radius appears to be larger and  expanded trimap is sparser.
     h, w = trimap.shape
 
-    for y, x in pndindex((h, w)):
-        if trimap[y, x] == 0 or trimap[y, x] == 1: continue
+    for y in range(h):
+        for x in range(w):
+            if trimap[y, x] == 0 or trimap[y, x] == 1:
+                continue
 
-        closest = np.inf
+            closest = np.inf
 
-        for y2 in range(y - k_i, y + k_i + 1):
-            for x2 in range(x - k_i, x + k_i + 1):
-                if x2 < 0 or x2 >= w or y2 < 0 or y2 >= h: continue
-                if trimap[y2, x2] != 0 and trimap[y2, x2] != 1: continue
+            for y2 in range(y - k_i, y + k_i + 1):
+                for x2 in range(x - k_i, x + k_i + 1):
+                    if x2 < 0 or x2 >= w or y2 < 0 or y2 >= h:
+                        continue
+                    if trimap[y2, x2] != 0 and trimap[y2, x2] != 1:
+                        continue
 
-                dr = image[y, x, 0] - image[y2, x2, 0]
-                dg = image[y, x, 1] - image[y2, x2, 1]
-                db = image[y, x, 2] - image[y2, x2, 2]
+                    dr = image[y, x, 0] - image[y2, x2, 0]
+                    dg = image[y, x, 1] - image[y2, x2, 1]
+                    db = image[y, x, 2] - image[y2, x2, 2]
 
-                color_distance = np.sqrt(dr * dr + dg * dg + db * db)
+                    color_distance = np.sqrt(dr * dr + dg * dg + db * db)
 
-                spatial_distance = np.hypot(x - x2, y - y2)
+                    spatial_distance = np.hypot(x - x2, y - y2)
 
-                if color_distance > k_c: continue
-                if spatial_distance > k_i: continue
+                    if color_distance > k_c:
+                        continue
+                    if spatial_distance > k_i:
+                        continue
 
-                if spatial_distance < closest:
-                    closest = spatial_distance
-                    expanded_trimap[y, x] = trimap[y2, x2]
+                    if spatial_distance < closest:
+                        closest = spatial_distance
+                        expanded_trimap[y, x] = trimap[y2, x2]
 
-@njit("void(f4[:, :, ::1], f4[:, :, ::1], f4[:, ::1], f4[:, :, ::1], f4[:, ::1], i8, f4, f4, f4, f4, i8)", cache=True, parallel=True, nogil=True)
+
 def sample_gathering(
     gathering_F,
     gathering_B,
@@ -316,120 +329,127 @@ def sample_gathering(
 
     max_steps = 2 * max(w, h)
 
-    for y, x in pndindex((h, w)):
-        fg_samples = np.zeros((num_angles, 3), dtype=np.float32)
-        fg_samples_xy = np.zeros((num_angles, 2), dtype=np.int32)
-        bg_samples = np.zeros((num_angles, 3), dtype=np.float32)
-        bg_samples_xy = np.zeros((num_angles, 2), dtype=np.int32)
+    for y in range(h):
+        for x in range(w):
+            fg_samples = np.zeros((num_angles, 3), dtype=np.float32)
+            fg_samples_xy = np.zeros((num_angles, 2), dtype=np.int32)
+            bg_samples = np.zeros((num_angles, 3), dtype=np.float32)
+            bg_samples_xy = np.zeros((num_angles, 2), dtype=np.int32)
 
-        C_p = image[y, x]
+            C_p = image[y, x]
 
-        gathering_alpha[y, x] = trimap[y, x]
+            gathering_alpha[y, x] = trimap[y, x]
 
-        if trimap[y, x] == 0:
-            gathering_B[y, x] = C_p
-            continue
+            if trimap[y, x] == 0:
+                gathering_B[y, x] = C_p
+                continue
 
-        if trimap[y, x] == 1:
-            gathering_F[y, x] = C_p
-            continue
+            if trimap[y, x] == 1:
+                gathering_F[y, x] = C_p
+                continue
 
-        # Fixed start angles in 8-by-8 grid for reproducible tests
-        n = 8
-        i = (x % n) + (y % n) * n
-        # Shuffle (99991 is a prime number)
-        i = (i * 99991) % (n * n)
-        start_angle = 2.0 * np.pi / (n * n) * i
+            # Fixed start angles in 8-by-8 grid for reproducible tests
+            n = 8
+            i = (x % n) + (y % n) * n
+            # Shuffle (99991 is a prime number)
+            i = (i * 99991) % (n * n)
+            start_angle = 2.0 * np.pi / (n * n) * i
 
-        num_fg_samples = 0
-        num_bg_samples = 0
+            num_fg_samples = 0
+            num_bg_samples = 0
 
-        for i in range(num_angles):
-            angle = 2.0 * np.pi / num_angles * i + start_angle
+            for i in range(num_angles):
+                angle = 2.0 * np.pi / num_angles * i + start_angle
 
-            c = np.cos(angle)
-            s = np.sin(angle)
+                c = np.cos(angle)
+                s = np.sin(angle)
 
-            has_fg = False
-            has_bg = False
+                has_fg = False
+                has_bg = False
 
-            for step in range(max_steps):
-                if has_fg and has_bg: break
+                for step in range(max_steps):
+                    if has_fg and has_bg:
+                        break
 
-                x2 = int(x + step * c)
-                y2 = int(y + step * s)
+                    x2 = int(x + step * c)
+                    y2 = int(y + step * s)
 
-                if x2 < 0 or y2 < 0 or x2 >= w or y2 >= h: break
+                    if x2 < 0 or y2 < 0 or x2 >= w or y2 >= h:
+                        break
 
-                if not has_fg and trimap[y2, x2] == 1:
-                    fg_samples[num_fg_samples] = image[y2, x2]
-                    fg_samples_xy[num_fg_samples, 0] = x2
-                    fg_samples_xy[num_fg_samples, 1] = y2
-                    num_fg_samples += 1
-                    has_fg = True
+                    if not has_fg and trimap[y2, x2] == 1:
+                        fg_samples[num_fg_samples] = image[y2, x2]
+                        fg_samples_xy[num_fg_samples, 0] = x2
+                        fg_samples_xy[num_fg_samples, 1] = y2
+                        num_fg_samples += 1
+                        has_fg = True
 
-                if not has_bg and trimap[y2, x2] == 0:
-                    bg_samples[num_bg_samples] = image[y2, x2]
-                    bg_samples_xy[num_bg_samples, 0] = x2
-                    bg_samples_xy[num_bg_samples, 1] = y2
-                    num_bg_samples += 1
-                    has_bg = True
+                    if not has_bg and trimap[y2, x2] == 0:
+                        bg_samples[num_bg_samples] = image[y2, x2]
+                        bg_samples_xy[num_bg_samples, 0] = x2
+                        bg_samples_xy[num_bg_samples, 1] = y2
+                        num_bg_samples += 1
+                        has_bg = True
 
-        if num_fg_samples == 0:
-            fg_samples[num_fg_samples] = gathering_F[y, x]
-            fg_samples_xy[num_fg_samples, 0] = x
-            fg_samples_xy[num_fg_samples, 1] = y
-            num_fg_samples += 1
+            if num_fg_samples == 0:
+                fg_samples[num_fg_samples] = gathering_F[y, x]
+                fg_samples_xy[num_fg_samples, 0] = x
+                fg_samples_xy[num_fg_samples, 1] = y
+                num_fg_samples += 1
 
-        if num_bg_samples == 0:
-            bg_samples[num_bg_samples] = gathering_B[y, x]
-            bg_samples_xy[num_bg_samples, 0] = x
-            bg_samples_xy[num_bg_samples, 1] = y
-            num_bg_samples += 1
+            if num_bg_samples == 0:
+                bg_samples[num_bg_samples] = gathering_B[y, x]
+                bg_samples_xy[num_bg_samples, 0] = x
+                bg_samples_xy[num_bg_samples, 1] = y
+                num_bg_samples += 1
 
-        min_Ep_f = np.inf
-        min_Ep_b = np.inf
+            min_Ep_f = np.inf
+            min_Ep_b = np.inf
 
-        for i in range(num_fg_samples):
-            Ep_f = Ep(image, x, y, fg_samples_xy[i, 0], fg_samples_xy[i, 1])
+            for i in range(num_fg_samples):
+                Ep_f = Ep(
+                    image, x, y, fg_samples_xy[i, 0], fg_samples_xy[i, 1])
 
-            min_Ep_f = min(min_Ep_f, Ep_f)
+                min_Ep_f = min(min_Ep_f, Ep_f)
 
-        for j in range(num_bg_samples):
-            Ep_b = Ep(image, x, y, bg_samples_xy[j, 0], bg_samples_xy[j, 1])
-
-            min_Ep_b = min(min_Ep_b, Ep_b)
-
-        PF_p = min_Ep_b / (min_Ep_f + min_Ep_b + 1e-5)
-
-        min_cost = np.inf
-
-        # Find best foreground/background pair
-        for i in range(num_fg_samples):
             for j in range(num_bg_samples):
-                F = fg_samples[i]
-                B = bg_samples[j]
+                Ep_b = Ep(
+                    image, x, y, bg_samples_xy[j, 0], bg_samples_xy[j, 1])
 
-                alpha_p = estimate_alpha(C_p, F, B)
+                min_Ep_b = min(min_Ep_b, Ep_b)
 
-                Ap = PF_p + (1.0 - 2.0 * PF_p) * alpha_p
+            PF_p = min_Ep_b / (min_Ep_f + min_Ep_b + 1e-5)
 
-                Dp_f = np.hypot(x - fg_samples_xy[i, 0], y - fg_samples_xy[i, 1])
-                Dp_b = np.hypot(x - bg_samples_xy[j, 0], y - bg_samples_xy[j, 1])
+            min_cost = np.inf
 
-                g_p = (
-                    Np(image, x, y, F, B, Np_radius)**eN *
-                    Ap**eA *
-                    Dp_f**ef *
-                    Dp_b**eb)
+            # Find best foreground/background pair
+            for i in range(num_fg_samples):
+                for j in range(num_bg_samples):
+                    F = fg_samples[i]
+                    B = bg_samples[j]
 
-                if min_cost > g_p:
-                    min_cost = g_p
-                    gathering_alpha[y, x] = alpha_p
-                    gathering_F[y, x] = F
-                    gathering_B[y, x] = B
+                    alpha_p = estimate_alpha(C_p, F, B)
 
-@njit("void(f4[:, :, ::1], f4[:, :, ::1], f4[:, ::1], f4[:, :, ::1], f4[:, :, ::1], f4[:, :, ::1], f4[:, ::1], i8)", cache=True, parallel=False, nogil=True)
+                    Ap = PF_p + (1.0 - 2.0 * PF_p) * alpha_p
+
+                    Dp_f = np.hypot(
+                        x - fg_samples_xy[i, 0], y - fg_samples_xy[i, 1])
+                    Dp_b = np.hypot(
+                        x - bg_samples_xy[j, 0], y - bg_samples_xy[j, 1])
+
+                    g_p = (
+                        Np(image, x, y, F, B, Np_radius)**eN *
+                        Ap**eA *
+                        Dp_f**ef *
+                        Dp_b**eb)
+
+                    if min_cost > g_p:
+                        min_cost = g_p
+                        gathering_alpha[y, x] = alpha_p
+                        gathering_F[y, x] = F
+                        gathering_B[y, x] = B
+
+
 def sample_refinement(
     refined_F,
     refined_B,
@@ -446,45 +466,46 @@ def sample_refinement(
     refined_B[:] = gathering_B
     refined_alpha[:] = trimap
 
-    for y, x in pndindex((h, w)):
-        C_p = image[y, x]
+    for y in range(h):
+        for x in range(w):
+            C_p = image[y, x]
 
-        if trimap[y, x] == 0 or trimap[y, x] == 1:
-            continue
+            if trimap[y, x] == 0 or trimap[y, x] == 1:
+                continue
 
-        max_samples = 3
-        sample_F = np.zeros((max_samples, 3), dtype=np.float32)
-        sample_B = np.zeros((max_samples, 3), dtype=np.float32)
-        sample_cost = np.zeros(max_samples, dtype=np.float32)
-        sample_cost[:] = np.inf
+            max_samples = 3
+            sample_F = np.zeros((max_samples, 3), dtype=np.float32)
+            sample_B = np.zeros((max_samples, 3), dtype=np.float32)
+            sample_cost = np.zeros(max_samples, dtype=np.float32)
+            sample_cost[:] = np.inf
 
-        for dy in range(-radius, radius + 1):
-            for dx in range(-radius, radius + 1):
-                x2 = x + dx
-                y2 = y + dy
+            for dy in range(-radius, radius + 1):
+                for dx in range(-radius, radius + 1):
+                    x2 = x + dx
+                    y2 = y + dy
 
-                if 0 <= x2 < w and 0 <= y2 < h:
-                    F_q = gathering_F[y2, x2]
-                    B_q = gathering_B[y2, x2]
+                    if 0 <= x2 < w and 0 <= y2 < h:
+                        F_q = gathering_F[y2, x2]
+                        B_q = gathering_B[y2, x2]
 
-                    cost = Mp2(C_p, F_q, B_q)
+                        cost = Mp2(C_p, F_q, B_q)
 
-                    i = np.argmax(sample_cost)
+                        i = np.argmax(sample_cost)
 
-                    if cost < sample_cost[i]:
-                        sample_cost[i] = cost
-                        sample_F[i] = F_q
-                        sample_B[i] = B_q
+                        if cost < sample_cost[i]:
+                            sample_cost[i] = cost
+                            sample_F[i] = F_q
+                            sample_B[i] = B_q
 
-        F_mean = sample_F.sum(axis=0) / max_samples
-        B_mean = sample_B.sum(axis=0) / max_samples
+            F_mean = sample_F.sum(axis=0) / max_samples
+            B_mean = sample_B.sum(axis=0) / max_samples
 
-        refined_F[y, x] = F_mean
-        refined_B[y, x] = B_mean
+            refined_F[y, x] = F_mean
+            refined_B[y, x] = B_mean
 
-        refined_alpha[y, x] = estimate_alpha(C_p, F_mean, B_mean)
+            refined_alpha[y, x] = estimate_alpha(C_p, F_mean, B_mean)
 
-@njit("void(f4[:, :, ::1], f4[:, :, ::1], f4[:, ::1], f4[:, :, ::1], f4[:, :, ::1], f4[:, ::1], f4[:, :, ::1], f4[:, ::1], i8, i8, i8, f4, f4, f4)", cache=True, parallel=True, nogil=True)
+
 def local_smoothing(
     final_F,
     final_B,
@@ -510,104 +531,112 @@ def local_smoothing(
     final_F[:] = refined_F
     final_B[:] = refined_B
 
-    for y, x in pndindex((h, w)):
-        C_p = image[y, x]
+    for y in range(h):
+        for x in range(w):
+            C_p = image[y, x]
 
-        if trimap[y, x] == 0 or trimap[y, x] == 1:
-            continue
+            if trimap[y, x] == 0 or trimap[y, x] == 1:
+                continue
 
-        F_p = np.zeros(3, dtype=np.float32)
-        B_p = np.zeros(3, dtype=np.float32)
+            F_p = np.zeros(3, dtype=np.float32)
+            B_p = np.zeros(3, dtype=np.float32)
 
-        sum_F = 0.0
-        sum_B = 0.0
+            sum_F = 0.0
+            sum_B = 0.0
 
-        alpha_p = refined_alpha[y, x]
+            alpha_p = refined_alpha[y, x]
 
-        for dy in range(-radius1, radius1 + 1):
-            for dx in range(-radius1, radius1 + 1):
-                x2 = x + dx
-                y2 = y + dy
+            for dy in range(-radius1, radius1 + 1):
+                for dx in range(-radius1, radius1 + 1):
+                    x2 = x + dx
+                    y2 = y + dy
 
-                if 0 <= x2 < w and 0 <= y2 < h:
-                    # NB: Gaussian not normalized, not using confidence
-                    Wc_pq = np.exp(-1.0 / sigma_sq1 * (dx * dx + dy * dy))
+                    if 0 <= x2 < w and 0 <= y2 < h:
+                        # NB: Gaussian not normalized, not using confidence
+                        Wc_pq = np.exp(-1.0 / sigma_sq1 * (dx * dx + dy * dy))
 
-                    if x != x2 or y != y2:
-                        Wc_pq *= abs(refined_alpha[y, x] - refined_alpha[y2, x2])
+                        if x != x2 or y != y2:
+                            Wc_pq *= abs(refined_alpha[y, x] -
+                                         refined_alpha[y2, x2])
 
-                    alpha_q = refined_alpha[y2, x2]
+                        alpha_q = refined_alpha[y2, x2]
 
-                    W_F = Wc_pq * alpha_q
-                    W_B = Wc_pq * (1.0 - alpha_q)
+                        W_F = Wc_pq * alpha_q
+                        W_B = Wc_pq * (1.0 - alpha_q)
 
-                    W_F = max(W_F, 1e-5)
-                    W_B = max(W_B, 1e-5)
+                        W_F = max(W_F, 1e-5)
+                        W_B = max(W_B, 1e-5)
 
-                    sum_F += W_F
-                    sum_B += W_B
+                        sum_F += W_F
+                        sum_B += W_B
 
-                    for c in range(3):
-                        F_p[c] += W_F * refined_F[y2, x2, c]
-                        B_p[c] += W_B * refined_B[y2, x2, c]
+                        for c in range(3):
+                            F_p[c] += W_F * refined_F[y2, x2, c]
+                            B_p[c] += W_B * refined_B[y2, x2, c]
 
-        F_p /= sum_F
-        B_p /= sum_B
+            F_p /= sum_F
+            B_p /= sum_B
 
-        final_F[y, x] = F_p
-        final_B[y, x] = B_p
+            final_F[y, x] = F_p
+            final_B[y, x] = B_p
 
-        final_alpha[y, x] = estimate_alpha(C_p, F_p, B_p)
+            final_alpha[y, x] = estimate_alpha(C_p, F_p, B_p)
 
-        # NB: Not using confidence
-        W_FB[y, x] = alpha_p * (1.0 - alpha_p)
+            # NB: Not using confidence
+            W_FB[y, x] = alpha_p * (1.0 - alpha_p)
 
-    for y, x in pndindex((h, w)):
-        C_p = image[y, x]
+    for y in range(h):
+        for x in range(w):
+            C_p = image[y, x]
 
-        if trimap[y, x] == 0 or trimap[y, x] == 1:
-            final_confidence[y, x] = trimap[y, x]
-            continue
+            if trimap[y, x] == 0 or trimap[y, x] == 1:
+                final_confidence[y, x] = trimap[y, x]
+                continue
 
-        D_FB = 0.0
-        weight_sum = 0.0
-        for dy in range(-radius2, radius2 + 1):
-            for dx in range(-radius2, radius2 + 1):
-                x2 = x + dx
-                y2 = y + dy
-                if 0 <= x2 < w and 0 <= y2 < h:
-                    weight_sum += W_FB[y2, x2]
-                    D_FB += W_FB[y2, x2] * dist(final_F[y2, x2], final_B[y2, x2])
+            D_FB = 0.0
+            weight_sum = 0.0
+            for dy in range(-radius2, radius2 + 1):
+                for dx in range(-radius2, radius2 + 1):
+                    x2 = x + dx
+                    y2 = y + dy
+                    if 0 <= x2 < w and 0 <= y2 < h:
+                        weight_sum += W_FB[y2, x2]
+                        D_FB += W_FB[y2, x2] * \
+                            dist(final_F[y2, x2], final_B[y2, x2])
 
-        D_FB /= weight_sum + 1e-5
-        D_FB += 1e-5
+            D_FB /= weight_sum + 1e-5
+            D_FB += 1e-5
 
-        FB_dist = dist(final_F[y, x], final_B[y, x])
+            FB_dist = dist(final_F[y, x], final_B[y, x])
 
-        F_p = final_F[y, x]
-        B_p = final_B[y, x]
+            F_p = final_F[y, x]
+            B_p = final_B[y, x]
 
-        final_confidence[y, x] = min(1.0, FB_dist / D_FB) * np.exp(-1.0 / sigma_sq2 * np.sqrt(Mp2(C_p, F_p, B_p)))
+            final_confidence[y, x] = min(
+                1.0, FB_dist / D_FB) * np.exp(-1.0 / sigma_sq2 * np.sqrt(Mp2(C_p, F_p, B_p)))
 
-    for y, x in pndindex((h, w)):
-        if trimap[y, x] == 0 or trimap[y, x] == 1:
-            final_alpha[y, x] = trimap[y, x]
-            continue
+    for y in range(h):
+        for x in range(w):
+            if trimap[y, x] == 0 or trimap[y, x] == 1:
+                final_alpha[y, x] = trimap[y, x]
+                continue
 
-        alpha_sum = 0.0
-        weight_sum = 0.0
-        for dy in range(-radius3, radius3 + 1):
-            for dx in range(-radius3, radius3 + 1):
-                x2 = x + dx
-                y2 = y + dy
-                if 0 <= x2 < w and 0 <= y2 < h:
-                    # NB: Gaussian not normalized, not using final_confidence(x2, y2)
-                    D_image_squared = dx * dx + dy * dy
-                    is_known = trimap[y2, x2] == 0 or trimap[y2, x2] == 1
-                    W_alpha = np.exp(-1.0 / sigma_sq3 * (dx * dx + dy * dy)) + is_known
-                    alpha_sum += W_alpha * refined_alpha[y2, x2]
-                    weight_sum += W_alpha
+            alpha_sum = 0.0
+            weight_sum = 0.0
+            for dy in range(-radius3, radius3 + 1):
+                for dx in range(-radius3, radius3 + 1):
+                    x2 = x + dx
+                    y2 = y + dy
+                    if 0 <= x2 < w and 0 <= y2 < h:
+                        # NB: Gaussian not normalized, not using final_confidence(x2, y2)
+                        D_image_squared = dx * dx + dy * dy
+                        is_known = trimap[y2, x2] == 0 or trimap[y2, x2] == 1
+                        W_alpha = np.exp(-1.0 / sigma_sq3 *
+                                         (dx * dx + dy * dy)) + is_known
+                        alpha_sum += W_alpha * refined_alpha[y2, x2]
+                        weight_sum += W_alpha
 
-        low_frequency_alpha[y, x] = alpha_sum / weight_sum
+            low_frequency_alpha[y, x] = alpha_sum / weight_sum
 
-        final_alpha[y, x] = final_confidence[y, x] * final_alpha[y, x] + (1.0 - final_confidence[y, x]) * low_frequency_alpha[y, x]
+            final_alpha[y, x] = final_confidence[y, x] * final_alpha[y, x] + \
+                (1.0 - final_confidence[y, x]) * low_frequency_alpha[y, x]

@@ -1,10 +1,6 @@
 import numpy as np
-from numba import njit, prange
 
-# Numba support for object pointers is currently (Q4 2019) wonky,
-# which is why plain arrays with indices are used instead.
 
-@njit("i8(i8[:], i8[:], i8[:], i8[:], i8[:], f4[:, :, :], f4[:], f4[:, :], i8[:], i8)", cache=True, nogil=True)
 def _make_tree(
     i0_inds,
     i1_inds,
@@ -134,7 +130,6 @@ def _make_tree(
     return n_nodes
 
 
-@njit("void(i8[:], i8[:], i8[:], i8[:], i8[:], f4[:, :, :], f4[:], f4[:, :], f4[:, :], i8[:, :], f4[:, :], i8)", cache=True, nogil=True, parallel=True)
 def _find_knn(
     i0_inds,
     i1_inds,
@@ -152,7 +147,7 @@ def _find_knn(
     dimension = points.shape[1]
 
     # For each query point
-    for i_query in prange(query_points.shape[0]):
+    for i_query in range(query_points.shape[0]):
         query_point = query_points[i_query]
 
         distances = out_distances[i_query]
@@ -176,7 +171,8 @@ def _find_knn(
                 dist = 0.0
                 for d in range(dimension):
                     p = query_point[d]
-                    dp = p - max(bounds[i_node, 0, d], min(bounds[i_node, 1, d], p))
+                    dp = p - max(bounds[i_node, 0, d],
+                                 min(bounds[i_node, 1, d], p))
                     dist += dp * dp
 
                 # Do nothing with this node if all points we have found so far
@@ -232,6 +228,7 @@ def _find_knn(
 
         # Workaround for https://github.com/numba/numba/issues/5156
         stack_size += 0
+
 
 class KDTree(object):
     """KDTree implementation"""
@@ -312,7 +309,8 @@ class KDTree(object):
 
         if self.shuffled_data_points.shape[0] < k:
             raise ValueError(
-                f"Number of data points ({self.shuffled_data_points.shape[0]}) is less than the number of neighbors requested (k={k})."
+                f"Number of data points ({
+                    self.shuffled_data_points.shape[0]}) is less than the number of neighbors requested (k={k})."
                 " Please provide a larger dataset or reduce the value of k."
             )
 
